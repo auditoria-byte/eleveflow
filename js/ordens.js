@@ -1,4 +1,4 @@
-window.addEventListener("firebaseReady", () => {
+window.onFirebaseReady(() => {
   const { collection, doc, addDoc, updateDoc, deleteDoc, getDocs, serverTimestamp } = window.fs;
   const db = window.db;
 
@@ -100,11 +100,18 @@ window.addEventListener("firebaseReady", () => {
     document.getElementById("editOSId").value = o.id;
     document.getElementById("editOSCliente").value = o.clienteNome || "";
     document.getElementById("editOSEquipamento").value = o.equipamentoNome || "";
-    document.getElementById("editOSZona").value = window.getZonas().find(z => z.id === o.zona)?.nome || "";
+    document.getElementById("editOSZona").value = window.getZonas ? (window.getZonas().find(z => z.id === o.zona)?.nome || "") : "";
     document.getElementById("editOSTipo").value = o.tipo;
     document.getElementById("editOSSituacao").value = o.situacao;
     document.getElementById("editOSEquipe").value = o.equipe || "";
-    document.getElementById("editOSUsuario").value = o.usuarioNome || "";
+
+    // Popula o select de técnico e marca o atual como selecionado
+    const selUsuarioEdit = document.getElementById("editOSUsuario");
+    const usuarios = window.getUsuarios ? window.getUsuarios() : [];
+    selUsuarioEdit.innerHTML = `<option value="">Selecione (opcional)</option>` +
+      usuarios.map(u => `<option value="${u.id}">${u.nome}</option>`).join("");
+    selUsuarioEdit.value = o.usuarioId || "";
+
     document.getElementById("editOSObs").value = o.observacoes || "";
     document.getElementById("editOSAvaliacao").value = o.avaliacao || "";
     document.getElementById("modalEditarOS").classList.add("ativo");
@@ -113,9 +120,15 @@ window.addEventListener("firebaseReady", () => {
     document.getElementById("modalEditarOS").classList.remove("ativo"));
   document.getElementById("btnSalvarModalOS").addEventListener("click", async () => {
     const id = document.getElementById("editOSId").value;
+    const selUsuarioEdit = document.getElementById("editOSUsuario");
+    const usuarioId = selUsuarioEdit.value;
+    const usuarioNome = usuarioId ? (selUsuarioEdit.selectedOptions[0]?.text || "") : "";
+
     await updateDoc(doc(db, "ordens", id), {
       situacao: document.getElementById("editOSSituacao").value,
       equipe: document.getElementById("editOSEquipe").value,
+      usuarioId,
+      usuarioNome,
       observacoes: document.getElementById("editOSObs").value,
       avaliacao: document.getElementById("editOSAvaliacao").value
     });
