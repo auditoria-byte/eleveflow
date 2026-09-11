@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EleveFlow - Gestão de Elevadores</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Arial, sans-serif; }
+
+:root{
+  --fundo:#f4f6f9;
+  --fundo-card:#ffffff;
+  --texto:#1a1a1a;
+  --texto-sec:#6b7280;
+  --borda:#e5e7eb;
+  --sidebar-bg:#1a1d29;
+  --sidebar-texto:#c9ccd6;
+  --sidebar-ativo:#2d3348;
+  --laranja:#f97316;
+  --roxo:#7c3aed;
+  --verde:#27AE60;
+  --vermelho:#E74C3C;
+  --amarelo:#F1C40F;
+  --azul:#3B82F6;
+  --input-bg:#ffffff;
+  --input-borda:#d1d5db;
+  --hover:#f0f2f5;
+}
+
+[data-theme="dark"]{
+  --fundo:#12141c;
+  --fundo-card:#1c1f2b;
+  --texto:#f1f2f6;
+  --texto-sec:#a8adbb;
+  --borda:#2d3140;
+  --sidebar-bg:#0d0f16;
+  --sidebar-texto:#c9ccd6;
+  --sidebar-ativo:#232838;
+  --input-bg:#242838;
+  --input-borda:#3a3f52;
+  --hover:#232838;
+}
+
+body{ background:var(--fundo); color:var(--texto); transition:background .3s, color .3s; }
+
+[data-theme="dark"] body,
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+[data-theme="dark"] p, [data-theme="dark"] label, [data-theme="dark"] span,
+[data-theme="dark"] td, [data-theme="dark"] th, [data-theme="dark"] div{
+  color: var(--texto);
+}
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea{
+  background: var(--input-bg);
+  color: var(--texto) !important;
+  border-color: var(--input-borda);
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder{ color:#8b90a0; }
+[data-theme="dark"] input[readonly]{ color:var(--texto-sec) !important; }
+[data-theme="dark"] .autocomplete-item{ color:var(--texto); }
+[data-theme="dark"] .autocomplete-item span{ color:var(--texto-sec) !important; }
+[data-theme="dark"] table{ color:var(--texto); }
+[data-theme="dark"] .vazio, [data-theme="dark"] .vazio-alerta{ color:var(--texto-sec); }
+[data-theme="dark"] .dica-equip{ color:var(--texto-sec); }
+
+#tela-login{ display:flex; align-items:center; justify-content:center; height:100vh; background:linear-gradient(135deg,#1a1d29,#2d3348); }
+.login-container{ background:var(--fundo-card); padding:40px; border-radius:16px; width:380px; box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center; }
+.logo h1{ font-size:32px; color:var(--texto); }
+.logo span{ color:var(--laranja); }
+.slogan{ color:var(--texto-sec); font-size:13px; margin:8px 0 24px; }
+.input-group{ margin-bottom:16px; text-align:left; }
+.input-group label{ display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--texto); }
+.input-group input, .input-group select, .input-group textarea{
+  width:100%; padding:11px 14px; border:1px solid var(--input-borda); border-radius:8px; font-size:14px;
+  background:var(--input-bg); color:var(--texto); outline:none; transition:border .2s;
+}
+.input-group input:focus, .input-group select:focus, .input-group textarea:focus{ border-color:var(--laranja); }
+.btn-login{ width:100%; padding:13px; background:var(--laranja); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:15px; margin-top:8px; }
+.btn-login:hover{ background:#ea580c; }
+.error-msg{ color:var(--vermelho); font-size:13px; margin-top:10px; display:none; }
+.forgot-pass{ display:block; margin-top:18px; font-size:13px; color:var(--texto-sec); text-decoration:none; }
+
+#app{ display:none; height:100vh; }
+.sidebar{ width:250px; background:var(--sidebar-bg); color:var(--sidebar-texto); display:flex; flex-direction:column; padding:20px 0; flex-shrink:0; overflow-y:auto; }
+.logo-sidebar{ font-size:20px; font-weight:700; color:#fff; padding:0 20px 25px; cursor:pointer; }
+.logo-sidebar .laranja{ color:var(--laranja); }
+.nav-item, .menu-item{ display:flex; align-items:center; gap:10px; padding:12px 20px; cursor:pointer; font-size:14px; transition:background .2s; }
+.nav-item:hover, .menu-item:hover{ background:var(--sidebar-ativo); }
+.nav-item.active{ background:var(--sidebar-ativo); color:#fff; border-left:3px solid var(--laranja); }
+.menu-item{ justify-content:space-between; font-weight:600; }
+.seta-submenu{ transition:transform .2s; }
+.menu-item.aberto .seta-submenu{ transform:rotate(180deg); }
+.submenu{ display:none; flex-direction:column; background:rgba(0,0,0,.15); }
+.submenu.aberto{ display:flex; }
+.submenu .nav-item{ padding-left:38px; font-size:13px; }
+.icon{ font-size:16px; }
+.sidebar-footer{ margin-top:auto; padding:15px 20px; font-size:11px; color:#6b7280; }
+
+.main-content{ flex:1; overflow-y:auto; padding:28px 32px; }
+.topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+.topbar h1{ font-size:24px; }
+.topbar p{ color:var(--texto-sec); font-size:13px; margin-top:4px; }
+.top-actions{ display:flex; align-items:center; gap:14px; }
+.toggle-dark{ background:var(--fundo-card); border:1px solid var(--borda); padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; color:var(--texto); display:flex; align-items:center; gap:6px; }
+.btn-sair{ background:var(--vermelho); color:#fff; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; }
+.avatar{ width:38px; height:38px; border-radius:50%; background:var(--laranja); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+
+.view{ display:none; }
+.view.ativa{ display:block; }
+
+.welcome-box{ background:linear-gradient(135deg,var(--roxo),#a855f7); color:#fff; padding:28px; border-radius:14px; margin-bottom:24px; }
+.welcome-box h2{ font-size:22px; margin-bottom:6px; }
+.cards-resumo{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:24px; }
+.card{ background:var(--fundo-card); border-radius:14px; padding:20px; border:1px solid var(--borda); position:relative; overflow:hidden; }
+.card h3{ font-size:13px; color:var(--texto-sec); font-weight:600; margin-bottom:8px; }
+.card .valor{ font-size:30px; font-weight:800; margin-bottom:4px; }
+.card .sub{ font-size:11px; color:var(--texto-sec); }
+.card .icon-box{ position:absolute; top:16px; right:16px; font-size:22px; opacity:.5; }
+.card.roxo .valor{ color:var(--roxo); } .card.verde .valor{ color:var(--verde); }
+.card.vermelho .valor{ color:var(--vermelho); } .card.amarelo .valor{ color:#d97706; }
+
+.duas-colunas{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+@media(max-width:900px){ .duas-colunas{ grid-template-columns:1fr; } }
+.secao{ background:var(--fundo-card); border:1px solid var(--borda); border-radius:14px; padding:20px; margin-bottom:20px; }
+.secao h3{ font-size:15px; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.section-title{ font-size:15px; margin:20px 0 12px; }
+
+.alerta-item{ display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-radius:8px; background:rgba(231,76,60,.08); border-left:3px solid var(--vermelho); margin-bottom:8px; font-size:13px; }
+.alerta-item.amarelo{ background:rgba(241,196,15,.1); border-left-color:var(--amarelo); }
+.tag-qtd{ background:var(--vermelho); color:#fff; font-size:11px; padding:3px 9px; border-radius:20px; font-weight:700; }
+.tag-qtd.amarelo{ background:#d97706; }
+.vazio-alerta{ text-align:center; color:var(--texto-sec); font-size:13px; padding:20px; }
+
+.barra-progresso-container{ margin-bottom:14px; }
+.barra-progresso-label{ display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px; color:var(--texto); }
+.barra-progresso-bg{ height:8px; background:var(--borda); border-radius:6px; overflow:hidden; }
+.barra-progresso-fill{ height:100%; border-radius:6px; transition:width .4s; }
+
+#mapa, #mapaTecnicosAuto, #mapaRastreio{ height:340px; border-radius:10px; z-index:1; }
+.legenda-mapa, .legenda-tecnicos{ display:flex; gap:18px; margin-top:12px; font-size:12px; color:var(--texto-sec); flex-wrap:wrap; }
+.legenda-item, .legenda-item-tec{ display:flex; align-items:center; gap:6px; }
+.ponto-legenda, .bolinha{ width:12px; height:12px; border-radius:50%; display:inline-block; border:2px solid #fff; }
+
+.form-container{ background:var(--fundo-card); border:1px solid var(--borda); border-radius:14px; padding:26px; }
+.titulo-view{ font-size:20px; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+.badge-edicao{ background:#fef3c7; color:#92400e; font-size:11px; padding:4px 10px; border-radius:20px; font-weight:700; }
+[data-theme="dark"] .badge-edicao{ background:#3f2f0f; color:#fbbf24; }
+.hidden{ display:none !important; }
+.grid, .grid-form{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:6px; }
+.grid-form{ grid-template-columns:1fr 1fr 1fr auto; align-items:end; }
+@media(max-width:900px){ .grid, .grid-form{ grid-template-columns:1fr 1fr; } }
+.input-group.full{ grid-column:1/-1; }
+.loading-cep{ display:none; font-size:11px; color:var(--laranja); margin-top:4px; }
+
+.elevador-card{ background:var(--hover); border:1px solid var(--borda); border-radius:10px; padding:16px; margin-bottom:12px; }
+.titulo-elevador{ font-weight:700; margin-bottom:10px; font-size:13px; }
+.elevador-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+@media(max-width:900px){ .elevador-grid{ grid-template-columns:1fr 1fr; } }
+
+.status-options{ display:flex; gap:10px; flex-wrap:wrap; }
+.status-card{ border:1px solid var(--borda); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+.status-card input{ margin:0; }
+
+.btn-salvar, .btn-adicionar{ background:var(--laranja); color:#fff; border:none; padding:12px 24px; border-radius:8px; font-weight:700; cursor:pointer; margin-top:16px; font-size:14px; }
+.btn-salvar:hover, .btn-adicionar:hover{ background:#ea580c; }
+.btn-cancelar-edicao{ display:none; background:transparent; border:1px solid var(--borda); color:var(--texto); padding:12px 24px; border-radius:8px; cursor:pointer; margin-top:16px; margin-left:10px; font-size:14px; }
+
+.filtros{ display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.filtros input, .filtros select{ padding:9px 12px; border:1px solid var(--input-borda); border-radius:8px; font-size:13px; background:var(--input-bg); color:var(--texto); flex:1; min-width:150px; }
+.tabela-container{ background:var(--fundo-card); border:1px solid var(--borda); border-radius:14px; overflow:hidden; overflow-x:auto; }
+table{ width:100%; border-collapse:collapse; font-size:13px; }
+thead{ background:var(--hover); }
+th{ text-align:left; padding:12px 14px; font-weight:700; color:var(--texto-sec); font-size:11px; text-transform:uppercase; white-space:nowrap; }
+td{ padding:12px 14px; border-top:1px solid var(--borda); white-space:nowrap; }
+tbody tr:hover{ background:var(--hover); }
+.badge{ padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; text-transform:capitalize; }
+.badge.ativo{ background:#d1fae5; color:#065f46; }
+.badge.inativo{ background:#e5e7eb; color:#374151; }
+.badge.bloqueado{ background:#fee2e2; color:#991b1b; }
+[data-theme="dark"] .badge.ativo{ background:#0f3d2c; color:#4ade80; }
+[data-theme="dark"] .badge.inativo{ background:#2a2f3d; color:#c9ccd6; }
+[data-theme="dark"] .badge.bloqueado{ background:#3d1414; color:#f87171; }
+.setor-tag, .funcao-tag{ background:var(--hover); padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600; }
+.acoes{ display:flex; gap:6px; }
+.btn-acao, .btn-icone-acao, .btn-mapa-mini{ background:var(--hover); border:1px solid var(--borda); border-radius:6px; padding:6px 9px; cursor:pointer; font-size:13px; }
+.btn-acao:hover, .btn-icone-acao:hover, .btn-mapa-mini:hover{ background:var(--laranja); border-color:var(--laranja); }
+.btn-acao[disabled]{ opacity:.3; cursor:not-allowed; }
+.vazio{ text-align:center; padding:40px; color:var(--texto-sec); font-size:13px; }
+.icone-bloqueado{ margin-left:4px; }
+
+.modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); align-items:center; justify-content:center; z-index:999; }
+.modal-overlay.ativo{ display:flex; }
+.modal-box{ background:var(--fundo-card); padding:26px; border-radius:14px; width:380px; max-height:90vh; overflow-y:auto; }
+.modal-box.edificio{ width:480px; }
+.modal-box h3{ margin-bottom:16px; }
+.modal-botoes{ display:flex; gap:10px; margin-top:16px; }
+.btn-cancelar-modal{ flex:1; background:transparent; border:1px solid var(--borda); color:var(--texto); padding:11px; border-radius:8px; cursor:pointer; }
+.btn-salvar-modal{ flex:1; background:var(--laranja); border:none; color:#fff; padding:11px; border-radius:8px; cursor:pointer; font-weight:700; }
+
+.linha2-edif{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.input-group-edif{ margin-bottom:14px; text-align:left; }
+.input-group-edif label{ display:block; font-size:12px; font-weight:600; margin-bottom:5px; color:var(--texto); }
+.input-group-edif input, .input-group-edif select{
+  width:100%; padding:9px 12px; border:1px solid var(--input-borda); border-radius:8px; font-size:13px;
+  background:var(--input-bg); color:var(--texto);
+}
+.input-group-edif input[readonly]{ background:var(--hover); color:var(--texto-sec); }
+
+.btn-atualizar, .btn-atualizar2{ background:var(--hover); border:1px solid var(--borda); color:var(--texto); padding:7px 14px; border-radius:8px; font-size:12px; cursor:pointer; margin-left:12px; }
+.status-bar{ display:flex; gap:10px; margin-bottom:18px; overflow-x:auto; }
+.status-item{ background:var(--fundo-card); border:1px solid var(--borda); border-radius:10px; padding:12px 18px; cursor:pointer; display:flex; flex-direction:column; gap:4px; min-width:120px; }
+.status-item.ativo{ border-color:var(--laranja); background:rgba(249,115,22,.08); }
+.status-item .label{ font-size:11px; color:var(--texto-sec); font-weight:600; text-transform:uppercase; }
+.status-item .qtd{ font-size:20px; font-weight:800; }
+.acoes-bar{ display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+.btn-filtro, .btn-nova-os{ padding:10px 16px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:600; }
+.btn-filtro{ background:var(--fundo-card); border:1px solid var(--borda); color:var(--texto); position:relative; }
+.btn-filtro.tem-filtro::after{ content:''; position:absolute; top:6px; right:6px; width:8px; height:8px; background:var(--laranja); border-radius:50%; }
+.btn-nova-os{ background:var(--laranja); border:none; color:#fff; }
+.input-busca{ flex:1; min-width:200px; padding:10px 14px; border:1px solid var(--input-borda); border-radius:8px; background:var(--input-bg); color:var(--texto); font-size:13px; }
+.contador-tabela{ font-size:12px; color:var(--texto-sec); white-space:nowrap; }
+.tag-tipo, .tag-situacao{ padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.tag-tipo.chamado{ background:#fee2e2; color:#991b1b; } .tag-tipo.ria{ background:#e0e7ff; color:#3730a3; }
+.tag-tipo.preventiva{ background:#d1fae5; color:#065f46; } .tag-tipo.reparo{ background:#fef3c7; color:#92400e; }
+.tag-tipo.vistoria{ background:#dbeafe; color:#1e40af; } .tag-tipo.visita{ background:#f3e8ff; color:#6b21a8; }
+.tag-tipo.modernizacao{ background:#ffe4e6; color:#9f1239; }
+.tag-situacao.preparacao{ background:#e5e7eb; color:#374151; } .tag-situacao.pendente{ background:#fef3c7; color:#92400e; }
+.tag-situacao.campo{ background:#dbeafe; color:#1e40af; } .tag-situacao.retornada{ background:#d1fae5; color:#065f46; }
+.tag-situacao.cancelada{ background:#fee2e2; color:#991b1b; }
+
+.header-gerar{ display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+.header-gerar h1{ font-size:22px; }
+.btn-voltar{ background:var(--hover); border:1px solid var(--borda); color:var(--texto); padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; }
+.card-dados{ background:var(--fundo-card); border:1px solid var(--borda); border-radius:14px; padding:24px; margin-bottom:20px; }
+.card-dados h3{ font-size:14px; margin-bottom:18px; color:var(--texto-sec); text-transform:uppercase; letter-spacing:.5px; }
+.linha-campos{ display:grid; gap:16px; margin-bottom:16px; }
+.linha-campos.col2{ grid-template-columns:1fr 1fr; }
+.campo{ display:flex; flex-direction:column; gap:6px; }
+.campo label{ font-size:13px; font-weight:600; }
+.campo input, .campo select, .campo textarea{ padding:11px 14px; border:1px solid var(--input-borda); border-radius:8px; font-size:14px; background:var(--input-bg); color:var(--texto); }
+.campo-obrigatorio label::after{ content:' *'; color:var(--vermelho); }
+.campo-relativo{ position:relative; }
+.autocomplete-lista{ position:absolute; top:100%; left:0; right:0; background:var(--fundo-card); border:1px solid var(--borda); border-radius:8px; max-height:220px; overflow-y:auto; z-index:50; box-shadow:0 10px 30px rgba(0,0,0,.15); margin-top:4px; }
+.autocomplete-item{ padding:10px 14px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--borda); }
+.autocomplete-item:hover{ background:var(--hover); }
+.alerta-chamado{ background:rgba(231,76,60,.1); border-left:3px solid var(--vermelho); padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; font-weight:600; }
+.dica-equip{ font-size:12px; color:var(--texto-sec); margin-bottom:16px; }
+.dica-equip.alerta-obrigatorio{ color:var(--vermelho); font-weight:700; }
+#blocoMapaAuto{ display:none; margin-bottom:16px; }
+.btn-salvar-os{ background:var(--laranja); color:#fff; border:none; padding:13px 26px; border-radius:8px; font-weight:700; cursor:pointer; font-size:14px; }
+.btn-salvar-os:disabled{ background:var(--texto-sec); cursor:not-allowed; opacity:.6; }
+
+.modal-overlay-filtro{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); align-items:center; justify-content:center; z-index:999; }
+.modal-overlay-filtro.ativo{ display:flex; }
+.modal-filtro-box{ background:var(--fundo-card); border-radius:14px; padding:26px; width:640px; max-height:88vh; overflow-y:auto; }
+.modal-filtro-box h3{ display:flex; justify-content:space-between; margin-bottom:18px; }
+.fechar-modal-filtro{ background:none; border:none; font-size:16px; cursor:pointer; color:var(--texto); }
+.grid-filtro{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.grid-filtro.full{ grid-template-columns:1fr; }
+.campo-filtro label{ font-size:12px; font-weight:600; display:block; margin-bottom:5px; }
+.campo-filtro input, .campo-filtro select{ width:100%; padding:9px 12px; border:1px solid var(--input-borda); border-radius:8px; font-size:13px; background:var(--input-bg); color:var(--texto); }
+.filtro-acoes{ display:flex; justify-content:flex-end; gap:10px; margin-top:10px; }
+.btn-limpar-filtro{ background:transparent; border:1px solid var(--borda); color:var(--texto); padding:10px 20px; border-radius:8px; cursor:pointer; }
+.btn-aplicar-filtro{ background:var(--laranja); border:none; color:#fff; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:700; }
+
+.status-rastreio{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
+.status-rastreio.disponivel{ background:var(--verde); }
+.status-rastreio.chamado{ background:var(--vermelho); }
+.status-rastreio.outro{ background:var(--azul); }
+
+.leaflet-popup-content-wrapper{ background:var(--fundo-card); color:var(--texto); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.25); padding:2px; }
+.leaflet-popup-content{ margin:12px 14px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.4; }
+.leaflet-popup-content strong{ display:block; font-size:14px; margin-bottom:4px; color:var(--laranja); }
+.leaflet-popup-content .popup-endereco{ color:var(--texto-sec); font-size:12px; }
+.leaflet-popup-content .popup-badge{ display:inline-block; margin-top:6px; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; }
+.leaflet-popup-tip{ background:var(--fundo-card); }
+.leaflet-popup-close-button{ color:var(--texto-sec) !important; font-size:16px !important; }
+
+/* ===================================================================
+   RESPONSIVO MOBILE — NOVO BLOCO ADICIONADO
+   =================================================================== */
+.menu-toggle{ display:none; }
+.overlay-mobile{ display:none; }
+
+@media (max-width: 768px) {
+  body{ overflow-x:hidden; }
+
+  .sidebar{
+    position:fixed;
+    top:0; left:-260px;
+    height:100vh; width:250px;
+    z-index:1000;
+    transition:left .3s ease;
+  }
+  .sidebar.active{ left:0; }
+
+  .main-content{
+    padding:70px 16px 20px !important;
+    width:100% !important;
+  }
+
+  .menu-toggle{
+    display:flex; align-items:center; justify-content:center;
+    position:fixed; top:12px; left:12px; z-index:1100;
+    background:var(--sidebar-bg); color:#fff; border:none;
+    width:42px; height:42px; border-radius:8px; font-size:20px;
+    cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.3);
+  }
+
+  .overlay-mobile{
+    display:block;
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,.5); z-index:999;
+    opacity:0; visibility:hidden; transition:opacity .3s ease;
+  }
+  .overlay-mobile.active{ opacity:1; visibility:visible; }
+
+  .topbar{ margin-top:10px; }
+
+  .cards-resumo, .duas-colunas, .grid, .grid-form, .elevador-grid,
+  .linha-campos.col2, .linha2-edif, .grid-filtro{
+    grid-template-columns:1fr !important;
+  }
+
+  .tabela-container{ overflow-x:auto; }
+  table{ min-width:700px; }
+
+  .filtros, .acoes-bar, .status-bar{ flex-wrap:wrap; }
+  .status-bar{ overflow-x:auto; flex-wrap:nowrap; }
+
+  .modal-box, .modal-box.edificio, .modal-filtro-box{ width:92vw !important; }
+
+  input, select, textarea, button{ font-size:15px !important; }
+}
+</style>
+</head>
+<body>
+<!-- ================= TELA DE LOGIN ================= -->
+<div id="tela-login">
+  <div class="login-container">
+    <div class="logo"><h1>Eleve<span>Flow</span></h1></div>
+    <p class="slogan">Gestão inteligente para elevadores</p>
+    <form id="loginForm">
+      <div class="input-group">
+        <label>Usuário</label>
+        <input type="text" id="usuario" placeholder="Digite seu login" required>
+      </div>
+      <div class="input-group">
+        <label>Senha</label>
+        <input type="password" id="senha" placeholder="Digite sua senha" required>
+      </div>
+      <button type="submit" class="btn-login">Entrar</button>
+      <p class="error-msg" id="errorMsg"></p>
+    </form>
+    <a href="#" class="forgot-pass">Esqueceu sua senha?</a>
+  </div>
+</div>
+
+<!-- ================= APP PRINCIPAL ================= -->
+<div id="app">
+
+  <!-- BOTÃO HAMBÚRGUER + OVERLAY (MOBILE) -->
+  <button class="menu-toggle" id="menuToggle">☰</button>
+  <div class="overlay-mobile" id="overlayMobile"></div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo-sidebar" id="logoPrincipal">Eleve<span class="laranja">Flow</span></div>
+
+    <div class="nav-item active" data-view="principal"><span class="icon">🏠</span> Dashboard</div>
+
+    <div class="menu-item" id="menuCadastro">
+      <span><span class="icon">📁</span> Cadastros</span>
+      <span class="seta-submenu">▾</span>
+    </div>
+    <div class="submenu" id="submenuCadastro">
+      <div class="nav-item" data-view="cadastro-cliente">Cadastro de Cliente</div>
+      <div class="nav-item" data-view="clientes">Clientes</div>
+      <div class="nav-item" data-view="edificios">Edifícios</div>
+      <div class="nav-item" data-view="zonas">Zonas</div>
+      <div class="nav-item" data-view="usuarios">Usuários</div>
+    </div>
+
+    <div class="menu-item" id="menuOS">
+      <span><span class="icon">🛠️</span> Ordens de Serviço</span>
+      <span class="seta-submenu">▾</span>
+    </div>
+    <div class="submenu" id="submenuOS">
+      <div class="nav-item" data-view="listagemOS">Listagem de OS</div>
+      <div class="nav-item" data-view="gerarOS">Gerar Nova OS</div>
+    </div>
+
+    <div class="sidebar-footer">EleveFlow © 2026<br>v1.0</div>
+  </div>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <div class="main-content">
+
+    <div class="topbar">
+      <div>
+        <h1 id="tituloTopo">Bem-vindo 👋</h1>
+        <p>Painel de controle da Elevacon Elevadores</p>
+      </div>
+      <div class="top-actions">
+        <button class="toggle-dark" onclick="alternarTema()">
+          <span id="iconeTema">🌙</span> <span id="labelTema">Modo escuro</span>
+        </button>
+        <span id="nomeUsuarioLogado" style="font-size:13px;"></span>
+        <div class="avatar" id="avatarUsuario">TS</div>
+        <button class="btn-sair" id="btnSair">Sair</button>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: DASHBOARD ========== -->
+    <div class="view ativa" id="view-principal">
+      <div class="welcome-box">
+        <h2 id="tituloBoasVindas">Bem-vindo 👋</h2>
+        <p>Acompanhe em tempo real o desempenho da sua operação de manutenção.</p>
+      </div>
+
+      <div class="cards-resumo">
+        <div class="card roxo">
+          <h3>Total de Chamados</h3>
+          <div class="valor" id="cardTotalChamados">0</div>
+          <div class="sub" id="cardChamadosSub">Total registrado na base</div>
+          <div class="icon-box">📞</div>
+        </div>
+        <div class="card verde">
+          <h3>Preventivas em Dia</h3>
+          <div class="valor" id="cardPreventivasOk">0%</div>
+          <div class="sub" id="cardPreventivasSub">—</div>
+          <div class="icon-box">✅</div>
+        </div>
+        <div class="card vermelho">
+          <h3>Clientes Críticos</h3>
+          <div class="valor" id="cardClientesCriticos">0</div>
+          <div class="sub">Todos os elevadores com chamado (5 dias)</div>
+          <div class="icon-box">🚨</div>
+        </div>
+        <div class="card amarelo">
+          <h3>Reincidências</h3>
+          <div class="valor" id="cardReincidencias">0</div>
+          <div class="sub">3+ chamados no mesmo elevador (15 dias)</div>
+          <div class="icon-box">⚠️</div>
+        </div>
+      </div>
+
+      <div class="duas-colunas">
+        <div class="secao">
+          <h3>🚨 Reincidências (últimos 15 dias)</h3>
+          <div id="listaReincidencias"></div>
+        </div>
+        <div class="secao">
+          <h3>⚠️ Clientes Críticos (últimos 5 dias)</h3>
+          <div id="listaClientesCriticos"></div>
+        </div>
+      </div>
+
+      <div class="secao">
+        <h3>📊 Preventivas por Cliente (mês atual)</h3>
+        <div id="containerPreventivas"></div>
+      </div>
+
+      <div class="secao">
+        <h3>🗺️ Mapa de Clientes</h3>
+        <div id="mapa"></div>
+        <div class="legenda-mapa">
+          <div class="legenda-item"><span class="ponto-legenda" style="background:#27AE60;"></span> Normal</div>
+          <div class="legenda-item"><span class="ponto-legenda" style="background:#F1C40F;"></span> Reincidência</div>
+          <div class="legenda-item"><span class="ponto-legenda" style="background:#E74C3C;"></span> Crítico</div>
+        </div>
+      </div>
+
+      <div class="secao">
+        <h3>📡 Rastreio de Equipe em Campo</h3>
+        <p style="font-size:12px;color:var(--texto-sec);margin-bottom:14px;">Exibindo técnicos com OS "Em Campo" ativa, na localização do cliente atendido.</p>
+        <div id="mapaRastreio"></div>
+        <div class="legenda-tecnicos">
+          <div class="legenda-item-tec"><span class="bolinha" style="background:#fff;border-color:#7f8c8d;"></span> Disponível</div>
+          <div class="legenda-item-tec"><span class="bolinha" style="background:#EF4444;border-color:#EF4444;"></span> Em Chamado</div>
+          <div class="legenda-item-tec"><span class="bolinha" style="background:#3B82F6;border-color:#3B82F6;"></span> Em Outro Serviço</div>
+        </div>
+        <div id="listaRastreioVazio" class="vazio-alerta hidden">Nenhum técnico em campo no momento.</div>
+      </div>
+    </div>
+    <!-- ========== VIEW: CADASTRO DE CLIENTE ========== -->
+    <div class="view" id="view-cadastro-cliente">
+      <div class="form-container">
+        <h2 class="titulo-view" id="tituloFormCliente">Cadastro de Cliente <span class="badge-edicao hidden" id="badgeEdicao">Editando</span></h2>
+
+        <form id="formCliente">
+          <input type="hidden" id="clienteEditId">
+
+          <div class="grid">
+            <div class="input-group"><label>Nome / Razão Social</label><input type="text" id="nome" required></div>
+            <div class="input-group"><label>CPF / CNPJ</label><input type="text" id="documento"></div>
+            <div class="input-group"><label>Setor de Atendimento</label>
+              <select id="setor" required>
+                <option value="">Selecione</option>
+                <option value="centro">Centro</option>
+                <option value="praia">Praia</option>
+                <option value="continente">Continente</option>
+                <option value="balneario">Balneário Camboriú</option>
+                <option value="lages">Lages</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="input-group"><label>Telefone</label><input type="text" id="telefone"></div>
+            <div class="input-group"><label>E-mail</label><input type="email" id="email"></div>
+            <div class="input-group"><label>CEP</label>
+              <input type="text" id="cep" maxlength="9">
+              <span class="loading-cep" id="loadingCep">Buscando endereço...</span>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="input-group"><label>Rua</label><input type="text" id="rua"></div>
+            <div class="input-group"><label>Número</label><input type="text" id="numero"></div>
+            <div class="input-group"><label>Complemento</label><input type="text" id="complemento"></div>
+          </div>
+
+          <div class="grid">
+            <div class="input-group"><label>Bairro</label><input type="text" id="bairro"></div>
+            <div class="input-group"><label>Cidade</label><input type="text" id="cidade"></div>
+            <div class="input-group"><label>UF</label><input type="text" id="uf" maxlength="2"></div>
+          </div>
+
+          <div class="grid">
+            <div class="input-group"><label>Quantidade de Elevadores</label><input type="number" min="0" id="qtdElevadores" value="0"></div>
+            <div class="input-group"><label>Status do Cliente</label>
+              <div class="status-options">
+                <label class="status-card"><input type="radio" name="status" value="ativo" checked> 🟢 Ativo</label>
+                <label class="status-card"><input type="radio" name="status" value="inativo"> ⚪ Inativo</label>
+                <label class="status-card"><input type="radio" name="status" value="bloqueado"> 🔴 Bloqueado</label>
+              </div>
+            </div>
+          </div>
+
+          <h3 class="section-title hidden" id="tituloElevadores">🛗 Equipamentos</h3>
+          <div id="containerElevadores"></div>
+
+          <div class="input-group full" style="margin-top:12px;">
+            <label>Observações</label>
+            <textarea id="observacoes" rows="3"></textarea>
+          </div>
+
+          <button type="submit" class="btn-salvar" id="btnSalvarCliente">Salvar Cliente</button>
+          <button type="button" class="btn-cancelar-edicao" id="btnCancelarEdicao">Cancelar Edição</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: LISTA DE CLIENTES ========== -->
+    <div class="view" id="view-clientes">
+      <h2 class="titulo-view">👥 Clientes Cadastrados</h2>
+
+      <div class="filtros">
+        <input type="text" id="filtroNome" placeholder="Buscar por nome...">
+        <input type="text" id="filtroEndereco" placeholder="Buscar por endereço...">
+        <select id="filtroSetor">
+          <option value="">Todos os setores</option>
+          <option value="centro">Centro</option>
+          <option value="praia">Praia</option>
+          <option value="continente">Continente</option>
+          <option value="balneario">Balneário Camboriú</option>
+          <option value="lages">Lages</option>
+        </select>
+        <select id="filtroContrato">
+          <option value="">Todos os contratos</option>
+          <option value="Mensal">Mensal</option>
+          <option value="Bimestral">Bimestral</option>
+          <option value="Trimestral">Trimestral</option>
+          <option value="Integral (Cobertura de Peças)">Integral</option>
+          <option value="Avulso">Avulso</option>
+        </select>
+        <select id="filtroEquipamento">
+          <option value="">Todos os equipamentos</option>
+          <option value="Convencional">Convencional</option>
+          <option value="Plataforma">Plataforma</option>
+        </select>
+      </div>
+
+      <div class="tabela-container">
+        <table>
+          <thead><tr>
+            <th>Nome</th><th>Endereço</th><th>Elevadores</th><th>Setor</th><th>Contrato</th><th>Status</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="tabelaClientes"></tbody>
+        </table>
+        <div class="vazio" id="mensagemVaziaClientes" style="display:none;">Nenhum cliente cadastrado ainda. Use o menu Cadastros → Cadastro de Cliente.</div>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: EDIFÍCIOS ========== -->
+    <div class="view" id="view-edificios">
+      <h2 class="titulo-view">🏢 Edifícios</h2>
+
+      <div class="filtros">
+        <input type="text" id="filtroEdifNome" placeholder="Buscar por nome/razão social...">
+        <select id="filtroEdifSetor">
+          <option value="">Todos os setores</option>
+          <option value="centro">Centro</option>
+          <option value="praia">Praia</option>
+          <option value="continente">Continente</option>
+          <option value="balneario">Balneário Camboriú</option>
+          <option value="lages">Lages</option>
+        </select>
+        <select id="filtroEdifStatus">
+          <option value="">Todos os status</option>
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+          <option value="bloqueado">Bloqueado</option>
+        </select>
+      </div>
+
+      <div class="tabela-container">
+        <table>
+          <thead><tr>
+            <th>ID Cliente</th><th>Nome/Razão Social</th><th>Zona</th><th>Setor</th>
+            <th>Endereço</th><th>Elevadores</th><th>Tipo</th><th>Contrato</th><th>Status</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="tabelaEdificios"></tbody>
+        </table>
+        <div class="vazio" id="mensagemVaziaEdificios" style="display:none;">Nenhum edifício cadastrado ainda. Cadastre um Cliente para gerar automaticamente.</div>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: ZONAS ========== -->
+    <div class="view" id="view-zonas">
+      <h2 class="titulo-view">📍 Zonas de Atendimento</h2>
+      <p style="font-size:12px;color:var(--texto-sec);margin-bottom:16px;">Cadastre as zonas de cada setor e associe um usuário responsável. Essas zonas ficam disponíveis no cadastro de Edifícios.</p>
+
+      <div class="form-container" style="margin-bottom:20px;">
+        <input type="hidden" id="zonaEditId">
+        <div class="grid">
+          <div class="input-group">
+            <label>Nome da Zona</label>
+            <input type="text" id="inputZonaNome" placeholder="Ex: Centro 1">
+          </div>
+          <div class="input-group">
+            <label>Setor</label>
+            <select id="inputZonaSetor">
+              <option value="">Selecione</option>
+              <option value="centro">Centro</option>
+              <option value="praia">Praia</option>
+              <option value="continente">Continente</option>
+              <option value="balneario">Balneário Camboriú</option>
+              <option value="lages">Lages</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Usuário Responsável</label>
+            <select id="inputZonaUsuario">
+              <option value="">Selecione o usuário</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-adicionar" id="btnAdicionarZona">+ Adicionar Zona</button>
+        <button class="btn-cancelar-edicao" id="btnCancelarEdicaoZona" style="display:none;">Cancelar Edição</button>
+      </div>
+
+      <div class="tabela-container">
+        <table>
+          <thead><tr><th>Zona</th><th>Setor</th><th>Usuário Responsável</th><th>Função</th><th>Ações</th></tr></thead>
+          <tbody id="tabelaZonas"></tbody>
+        </table>
+        <div class="vazio" id="mensagemVaziaZonas" style="display:none;">Nenhuma zona cadastrada ainda.</div>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: USUÁRIOS ========== -->
+    <div class="view" id="view-usuarios">
+      <h2 class="titulo-view">🔐 Usuários do Sistema</h2>
+      <p style="font-size:12px;color:var(--texto-sec);margin-bottom:16px;">Login e senha cadastrados aqui dão acesso ao aplicativo. Funções Gestor Técnico, Técnico e Supervisor aparecem no rastreio do mapa.</p>
+
+      <div class="form-container" style="margin-bottom:20px;">
+        <div class="grid">
+          <div class="input-group"><label>Nome completo</label><input type="text" id="inputNome" placeholder="Nome completo"></div>
+          <div class="input-group"><label>Login de acesso</label><input type="text" id="inputLogin" placeholder="Login"></div>
+          <div class="input-group"><label>Senha inicial</label><input type="password" id="inputSenha" placeholder="Senha de acesso"></div>
+        </div>
+        <div class="grid">
+          <div class="input-group">
+            <label>Função</label>
+            <select id="inputFuncao">
+              <option value="">Selecione a função</option>
+              <option value="Administrador">Administrador</option>
+              <option value="Gestor Técnico">Gestor Técnico</option>
+              <option value="Técnico">Técnico</option>
+              <option value="Supervisor">Supervisor</option>
+              <option value="Representante Comercial">Representante Comercial</option>
+              <option value="Administrativo">Administrativo</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-adicionar" id="btnAdicionar">+ Adicionar Usuário</button>
+      </div>
+
+      <div class="tabela-container">
+        <table>
+          <thead><tr><th>ID</th><th>Nome</th><th>Login</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tabelaUsuarios"></tbody>
+        </table>
+        <div class="vazio" id="mensagemVaziaUsuarios" style="display:none;">Nenhum usuário cadastrado.</div>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: LISTAGEM DE OS ========== -->
+    <div class="view" id="view-listagemOS">
+      <div class="acoes-bar">
+        <h2 class="titulo-view" style="margin:0;">🛠️ Ordens de Serviço</h2>
+        <button class="btn-atualizar" onclick="renderizarTabela()">🔄 Atualizar</button>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-item ativo" data-status="todas"><span class="label">Todas</span><span class="qtd" id="qtdTodas">0</span></div>
+        <div class="status-item" data-status="preparacao"><span class="label">Preparação</span><span class="qtd" id="qtdPreparacao">0</span></div>
+        <div class="status-item" data-status="pendente"><span class="label">Pendente</span><span class="qtd" id="qtdPendente">0</span></div>
+        <div class="status-item" data-status="campo"><span class="label">Em Campo</span><span class="qtd" id="qtdCampo">0</span></div>
+        <div class="status-item" data-status="retornada"><span class="label">Retornada</span><span class="qtd" id="qtdRetornada">0</span></div>
+        <div class="status-item" data-status="cancelada"><span class="label">Cancelada</span><span class="qtd" id="qtdCancelada">0</span></div>
+      </div>
+
+      <div class="acoes-bar">
+        <input type="text" class="input-busca" id="buscaTabela" placeholder="Buscar por cliente, ID ou usuário...">
+        <button class="btn-filtro" id="btnAbrirFiltro">🔍 Filtros avançados</button>
+        <button class="btn-nova-os" id="btnNovaOS">+ Nova OS</button>
+        <span class="contador-tabela" id="contadorResultados">0 registro(s)</span>
+      </div>
+
+      <div class="tabela-container">
+        <table>
+          <thead><tr>
+            <th>ID</th>
+            <th>Dt/Hr Inclusão</th>
+            <th>Dt/Hr Aceite</th>
+            <th>Dt/Hr Chegada</th>
+            <th>Dt/Hr Últ. Execução</th>
+            <th>Tipo</th>
+            <th>Equipe</th>
+            <th>Usuário</th>
+            <th>Cliente</th>
+            <th>Elevador</th>
+            <th>Zona</th>
+            <th>Situação</th>
+            <th>Avaliação</th>
+            <th>Ações</th>
+          </tr></thead>
+          <tbody id="tabelaOS"></tbody>
+        </table>
+        <div class="vazio hidden" id="vazioOS">Nenhuma Ordem de Serviço encontrada.</div>
+      </div>
+    </div>
+
+    <!-- ========== VIEW: GERAR NOVA OS ========== -->
+    <div class="view" id="view-gerarOS">
+      <div class="header-gerar">
+        <button class="btn-voltar" id="btnVoltarListagem">← Voltar</button>
+        <h1>Gerar Nova Ordem de Serviço</h1>
+      </div>
+
+      <div class="card-dados">
+        <h3>Dados Gerais</h3>
+        <div class="linha-campos col2">
+          <div class="campo">
+            <label>Data e Hora de Abertura</label>
+            <input type="text" id="previewDataHora2" readonly>
+          </div>
+          <div class="campo campo-obrigatorio">
+            <label>Tipo de OS</label>
+            <select id="selTipoOS">
+              <option value="">Selecione</option>
+              <option value="chamado">Chamado</option>
+              <option value="ria">Inspeção Anual (RIA)</option>
+              <option value="preventiva">Manutenção Preventiva</option>
+              <option value="reparo">Serviço/Reparo</option>
+              <option value="vistoria">Vistoria</option>
+              <option value="visita">Visita</option>
+              <option value="modernizacao">Modernização</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-dados">
+        <h3>Cliente e Equipamento</h3>
+        <div class="linha-campos col2">
+          <div class="campo campo-obrigatorio campo-relativo">
+            <label>Buscar Cliente</label>
+            <input type="text" id="buscaCliente" placeholder="Digite o nome do cliente...">
+            <input type="hidden" id="clienteSelecionadoId">
+            <div class="autocomplete-lista hidden" id="listaAutocompleteCliente"></div>
+          </div>
+          <div class="campo campo-obrigatorio">
+            <label>Equipamento</label>
+            <select id="selEquipamento" disabled>
+              <option value="">Selecione o cliente primeiro</option>
+            </select>
+          </div>
+        </div>
+        <p class="dica-equip" id="dicaEquipamento">Selecione um cliente para listar os equipamentos.</p>
+
+        <div class="alerta-chamado hidden" id="alertaBloqueado" style="background:rgba(231,76,60,.15); border-left-color:var(--vermelho);">
+          🔒 Este cliente está <strong>BLOQUEADO por inadimplência</strong>. Não é possível gerar uma nova Ordem de Serviço. Solicite contato com a gerência.
+        </div>
+      </div>
+
+      <div class="alerta-chamado hidden" id="alertaChamado">
+        🚨 Chamado emergencial — mostrando técnicos próximos ao cliente abaixo.
+      </div>
+
+      <div class="card-dados" id="blocoMapaAuto">
+        <h3>🗺️ Técnicos Próximos ao Cliente</h3>
+        <div id="mapaTecnicosAuto"></div>
+        <div class="legenda-tecnicos">
+          <div class="legenda-item-tec"><span class="bolinha" style="background:#fff;border-color:#7f8c8d;"></span> Disponível</div>
+          <div class="legenda-item-tec"><span class="bolinha" style="background:#EF4444;border-color:#EF4444;"></span> Em Chamado</div>
+          <div class="legenda-item-tec"><span class="bolinha" style="background:#3B82F6;border-color:#3B82F6;"></span> Em Outro Serviço</div>
+        </div>
+      </div>
+
+      <div class="card-dados">
+        <h3>Detalhes do Atendimento</h3>
+        <div class="linha-campos col2">
+          <div class="campo">
+            <label>Situação</label>
+            <select id="selSituacao">
+              <option value="preparacao">Em Preparação</option>
+              <option value="pendente" selected>Pendente de Envio</option>
+              <option value="campo">Em Campo</option>
+              <option value="retornada">Retornada de Campo</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Zona</label>
+            <select id="selZona">
+              <option value="">Selecione (opcional)</option>
+            </select>
+          </div>
+        </div>
+        <div class="linha-campos col2">
+          <div class="campo">
+            <label>Equipe</label>
+            <select id="selEquipe">
+              <option value="">Nenhuma / A definir</option>
+              <option value="Equipe Centro">Equipe Centro</option>
+              <option value="Equipe Praia 4">Equipe Praia 4</option>
+              <option value="Equipe Continente">Equipe Continente</option>
+              <option value="Equipe Balneário">Equipe Balneário</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Técnico Responsável</label>
+            <select id="selUsuario">
+              <option value="">Selecione (opcional)</option>
+            </select>
+          </div>
+        </div>
+        <div class="linha-campos col2">
+          <div class="campo">
+            <label>Observações</label>
+            <textarea id="txtObservacoes" rows="1" placeholder="Detalhes do atendimento..."></textarea>
+          </div>
+        </div>
+        <button class="btn-salvar-os" id="btnSalvarOS">✅ Gerar Ordem de Serviço</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<!-- ================= MODAL EDITAR USUÁRIO ================= -->
+<div class="modal-overlay" id="modalEditar">
+  <div class="modal-box">
+    <h3>Editar Usuário</h3>
+    <input type="hidden" id="editId">
+    <div class="input-group"><label>Nome</label><input type="text" id="editNome"></div>
+    <div class="input-group"><label>Login</label><input type="text" id="editLogin"></div>
+    <div class="input-group"><label>Função</label>
+      <select id="editFuncao">
+        <option value="Administrador">Administrador</option>
+        <option value="Gestor Técnico">Gestor Técnico</option>
+        <option value="Técnico">Técnico</option>
+        <option value="Supervisor">Supervisor</option>
+        <option value="Representante Comercial">Representante Comercial</option>
+        <option value="Administrativo">Administrativo</option>
+      </select>
+    </div>
+    <div class="input-group"><label>Nova Senha (deixe vazio para não alterar)</label><input type="password" id="editSenha"></div>
+    <div class="modal-botoes">
+      <button class="btn-cancelar-modal" id="btnCancelarModal">Cancelar</button>
+      <button class="btn-salvar-modal" id="btnSalvarModal">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL EDITAR ORDEM DE SERVIÇO ================= -->
+<div class="modal-overlay" id="modalEditarOS">
+  <div class="modal-box" style="width:480px;">
+    <h3>Editar Ordem de Serviço</h3>
+    <input type="hidden" id="editOSId">
+    <div class="input-group"><label>Cliente</label><input type="text" id="editOSCliente"></div>
+    <div class="input-group"><label>Elevador/Equipamento</label><input type="text" id="editOSEquipamento"></div>
+    <div class="input-group"><label>Zona</label><input type="text" id="editOSZona"></div>
+    <div class="input-group"><label>Tipo de OS</label>
+      <select id="editOSTipo">
+        <option value="chamado">Chamado</option>
+        <option value="ria">Inspeção Anual (RIA)</option>
+        <option value="preventiva">Manutenção Preventiva</option>
+        <option value="reparo">Serviço/Reparo</option>
+        <option value="vistoria">Vistoria</option>
+        <option value="visita">Visita</option>
+        <option value="modernizacao">Modernização</option>
+      </select>
+    </div>
+    <div class="input-group"><label>Situação</label>
+      <select id="editOSSituacao">
+        <option value="preparacao">Em Preparação</option>
+        <option value="pendente">Pendente de Envio</option>
+        <option value="campo">Em Campo</option>
+        <option value="retornada">Retornada de Campo</option>
+        <option value="cancelada">Cancelada</option>
+      </select>
+    </div>
+    <div class="input-group"><label>Equipe</label><input type="text" id="editOSEquipe"></div>
+    <div class="input-group"><label>Usuário/Técnico</label><input type="text" id="editOSUsuario"></div>
+
+    <div class="grid" style="grid-template-columns:1fr 1fr;">
+      <div class="input-group"><label>Dt/Hr Aceite</label><input type="datetime-local" id="editOSAceite"></div>
+      <div class="input-group"><label>Dt/Hr Chegada</label><input type="datetime-local" id="editOSChegada"></div>
+    </div>
+    <div class="input-group"><label>Dt/Hr Última Execução</label><input type="datetime-local" id="editOSExecucao"></div>
+
+    <div class="input-group"><label>Avaliação (opcional)</label>
+      <select id="editOSAvaliacao">
+        <option value="">Sem avaliação</option>
+        <option value="1">⭐ 1</option>
+        <option value="2">⭐⭐ 2</option>
+        <option value="3">⭐⭐⭐ 3</option>
+        <option value="4">⭐⭐⭐⭐ 4</option>
+        <option value="5">⭐⭐⭐⭐⭐ 5</option>
+      </select>
+    </div>
+
+    <div class="input-group"><label>Observações</label><textarea id="editOSObs" rows="3"></textarea></div>
+    <div class="modal-botoes">
+      <button class="btn-cancelar-modal" id="btnCancelarModalOS">Cancelar</button>
+      <button class="btn-salvar-modal" id="btnSalvarModalOS">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL EDITAR EDIFÍCIO ================= -->
+<div class="modal-overlay" id="modalEditarEdificio">
+  <div class="modal-box edificio">
+    <h3>Editar Edifício</h3>
+    <input type="hidden" id="edifId">
+
+    <div class="linha2-edif">
+      <div class="input-group-edif"><label>ID Cliente</label><input type="text" id="edifClienteId" readonly></div>
+      <div class="input-group-edif"><label>Status</label>
+        <select id="edifStatus">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+          <option value="bloqueado">Bloqueado</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="input-group-edif"><label>Nome/Razão Social</label><input type="text" id="edifNome"></div>
+
+    <div class="linha2-edif">
+      <div class="input-group-edif"><label>Zona</label>
+        <select id="edifZona"><option value="">Selecione uma zona</option></select>
+      </div>
+      <div class="input-group-edif"><label>Setor</label>
+        <input type="text" id="edifSetor" readonly placeholder="Selecione a zona ao lado">
+      </div>
+    </div>
+
+    <div class="input-group-edif"><label>Endereço</label><input type="text" id="edifEndereco"></div>
+
+    <div class="linha2-edif">
+      <div class="input-group-edif"><label>Elevadores</label><input type="text" id="edifQtdElevadores" readonly></div>
+      <div class="input-group-edif"><label>Tipo</label><input type="text" id="edifTipo" readonly></div>
+    </div>
+
+    <div class="input-group-edif"><label>Contrato</label><input type="text" id="edifContrato" readonly></div>
+
+    <div class="modal-botoes">
+      <button class="btn-cancelar-modal" id="btnCancelarModalEdif">Cancelar</button>
+      <button class="btn-salvar-modal" id="btnSalvarModalEdif">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL DE FILTROS (OS) ================= -->
+<div class="modal-overlay-filtro" id="modalFiltro">
+  <div class="modal-filtro-box">
+    <h3>Filtros Avançados <button class="fechar-modal-filtro" id="fecharModalFiltro">✕</button></h3>
+
+    <div class="grid-filtro">
+      <div class="campo-filtro"><label>Data Inicial</label><input type="date" id="fDataIncInicial"></div>
+      <div class="campo-filtro"><label>Data Final</label><input type="date" id="fDataIncFinal"></div>
+    </div>
+    <div class="grid-filtro">
+      <div class="campo-filtro"><label>Status</label>
+        <select id="fStatus">
+          <option value="">Todos</option>
+          <option value="preparacao">Em Preparação</option>
+          <option value="pendente">Pendente de Envio</option>
+          <option value="campo">Em Campo</option>
+          <option value="retornada">Retornada de Campo</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+      </div>
+      <div class="campo-filtro"><label>Tipo de OS</label>
+        <select id="fTipoOS">
+          <option value="">Todos</option>
+          <option value="chamado">Chamado</option>
+          <option value="ria">Inspeção Anual (RIA)</option>
+          <option value="preventiva">Manutenção Preventiva</option>
+          <option value="reparo">Serviço/Reparo</option>
+          <option value="vistoria">Vistoria</option>
+          <option value="visita">Visita</option>
+          <option value="modernizacao">Modernização</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-filtro">
+      <div class="campo-filtro"><label>ID da OS</label><input type="text" id="fId" placeholder="Ex: 700703"></div>
+      <div class="campo-filtro"><label>Equipe</label>
+        <select id="fEquipe">
+          <option value="">Todas</option>
+          <option value="Equipe Centro">Equipe Centro</option>
+          <option value="Equipe Praia 4">Equipe Praia 4</option>
+          <option value="Equipe Continente">Equipe Continente</option>
+          <option value="Equipe Balneário">Equipe Balneário</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-filtro">
+      <div class="campo-filtro"><label>Técnico/Usuário</label>
+        <select id="fUsuarioSel"><option value="">Todos</option></select>
+      </div>
+      <div class="campo-filtro"><label>Cliente</label><input type="text" id="fCliente" placeholder="Nome do cliente"></div>
+    </div>
+    <div class="grid-filtro">
+      <div class="campo-filtro"><label>Edifício</label><input type="text" id="fEdificio" placeholder="Nome do edifício"></div>
+      <div class="campo-filtro"><label>Equipamento</label><input type="text" id="fEquipamentoTxt" placeholder="Ex: Elevador Social"></div>
+    </div>
+
+    <div class="filtro-acoes">
+      <button class="btn-limpar-filtro" id="btnLimparFiltro">Limpar filtros</button>
+      <button class="btn-aplicar-filtro" id="btnAplicarFiltro">Aplicar Filtros</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Firebase (module) - carrega e inicializa antes dos demais -->
+<script type="module" src="js/firebase-config.js"></script>
+
+<!-- Scripts da aplicação — defer garante execução em ordem, após o Firebase -->
+<script src="js/core.js" defer></script>
+<script src="js/dashboard.js" defer></script>
+<script src="js/cadastros.js" defer></script>
+<script src="js/ordens.js" defer></script>
+
+</body>
+</html>
