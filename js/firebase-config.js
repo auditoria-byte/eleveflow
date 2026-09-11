@@ -1,15 +1,26 @@
+// js/firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
-  getDocs, getDoc, query, where, orderBy, onSnapshot, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {
-  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  getDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAmID1OzPcXMF2O43KjsHqSQv7t7aIgm1Y",
+  apiKey: "AIzaSyAmID1OzPcXMF2043KjsHqSQv7t7aIgm1Y",
   authDomain: "elevacon-sistema.firebaseapp.com",
   projectId: "elevacon-sistema",
   storageBucket: "elevacon-sistema.firebasestorage.app",
@@ -19,21 +30,19 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-window.db = getFirestore(app);
-window.auth = getAuth(app);
-
-// Auth
-window.fbSignIn = signInWithEmailAndPassword;
-window.fbSignOut = signOut;
-window.fbOnAuthChange = onAuthStateChanged;
-
-// Firestore (exposto pra scripts não-módulo usarem)
+// Expõe tudo que core.js / dashboard.js / cadastros.js / ordens.js precisam
+window.auth = auth;
+window.db = db;
 window.fs = {
   collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
-  getDocs, getDoc, query, where, orderBy, onSnapshot, serverTimestamp
+  getDocs, getDoc, serverTimestamp
 };
+window.fbSignIn = signInWithEmailAndPassword;
+window.fbOnAuthChange = onAuthStateChanged;
+window.fbSignOut = signOut;
 
-try { getAnalytics(app); } catch (e) { console.warn("Analytics não iniciado:", e); }
-
+// Avisa os outros scripts que o Firebase está pronto
 window.dispatchEvent(new Event("firebaseReady"));
