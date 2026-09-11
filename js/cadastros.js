@@ -1,4 +1,4 @@
-window.addEventListener("firebaseReady", () => {
+window.onFirebaseReady(() => {
   const { collection, doc, addDoc, setDoc, updateDoc, deleteDoc, getDocs, getDoc, serverTimestamp } = window.fs;
   const db = window.db;
 
@@ -193,6 +193,7 @@ window.addEventListener("firebaseReady", () => {
     const nomeF = document.getElementById("filtroNome").value.toLowerCase();
     const endF = document.getElementById("filtroEndereco").value.toLowerCase();
     const setorF = document.getElementById("filtroSetor").value;
+    const contratoF = document.getElementById("filtroContrato").value; // FIX: lê o filtro de contrato
     const equipF = document.getElementById("filtroEquipamento").value;
 
     const filtrados = CLIENTES.filter(c => {
@@ -200,6 +201,8 @@ window.addEventListener("firebaseReady", () => {
       if (nomeF && !(c.nome || "").toLowerCase().includes(nomeF)) return false;
       if (endF && !endereco.includes(endF)) return false;
       if (setorF && c.setor !== setorF) return false;
+      // FIX: aplica o filtro de contrato (considera "Avulso" como padrão quando não definido)
+      if (contratoF && (c.contrato || "Avulso") !== contratoF) return false;
       if (equipF && !(c.elevadores || []).some(e => e.tipo === equipF)) return false;
       return true;
     });
@@ -263,7 +266,7 @@ window.addEventListener("firebaseReady", () => {
     document.getElementById("edifStatus").value = e.status;
     document.getElementById("edifNome").value = e.nome || "";
     document.getElementById("edifZona").value = e.zona || "";
-    document.getElementById("edifSetor").value = setores[e.setor] || "";
+    document.getElementById("edifSetor").value = e.setor || ""; // FIX: usa o value ("centro"), não o rótulo
     document.getElementById("edifEndereco").value = e.endereco || "";
     document.getElementById("edifQtdElevadores").value = e.qtdElevadores || 0;
     document.getElementById("edifTipo").value = e.tipo || "";
@@ -272,7 +275,7 @@ window.addEventListener("firebaseReady", () => {
   };
   document.getElementById("edifZona").addEventListener("change", (e) => {
     const zona = ZONAS.find(z => z.id === e.target.value);
-    document.getElementById("edifSetor").value = zona ? setores[zona.setor] : "";
+    document.getElementById("edifSetor").value = zona ? zona.setor : ""; // FIX: usa o value, não o rótulo
   });
   document.getElementById("btnCancelarModalEdif").addEventListener("click", () =>
     document.getElementById("modalEditarEdificio").classList.remove("ativo"));
@@ -282,7 +285,9 @@ window.addEventListener("firebaseReady", () => {
       status: document.getElementById("edifStatus").value,
       nome: document.getElementById("edifNome").value,
       zona: document.getElementById("edifZona").value,
-      endereco: document.getElementById("edifEndereco").value
+      setor: document.getElementById("edifSetor").value,       // FIX: agora persiste o setor
+      endereco: document.getElementById("edifEndereco").value,
+      contrato: document.getElementById("edifContrato").value  // FIX: agora persiste o contrato
     });
     document.getElementById("modalEditarEdificio").classList.remove("ativo");
     await carregarTudo();
